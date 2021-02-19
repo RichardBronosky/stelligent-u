@@ -1,0 +1,207 @@
+#!/usr/bin/env bash
+set -o errexit    # -e exit if a command exits with a non-zero status
+set -o nounset    # -u treat unset variables as an error when substituting
+set -o pipefail   #    return status of last command to exit with a non-zero
+set -o errtrace   # -E ERR trap is inherited by shell functions
+set -o functrace  # -T DEBUG trap is inherited by shell functions
+
+jq_functions='
+
+    def export:
+        "export " + .
+    ;
+    def prefix:
+        "AWS" + . | sub("(?<a>ARN|ACCOUNT|PROFILE)"; "ASSUMED_ROLE_"+.a)
+    ;
+    def snake_case:
+        .key | gsub("(?<a>[A-Z])"; "_"+.a) | ascii_upcase | prefix
+    ;
+    def equals_value:
+        "=\"" + .value + "\""
+    ;
+    def account_id:
+        {"AccountId": (.Arn | sub("([^:]*:){4}(?<a>[0-9]*):.*";.a))}
+    ;
+    def aws_config_input:
+        { "config":input, "credentials":input }
+    ;
+    def aws_config_field_profiles:
+        .config | [ ( to_entries[] | select(.key | startswith("profile"))) | { (.key | sub("profile ";"")): .value } ] | add
+    ;
+    def aws_config_field_plugins:
+        .config.plugins
+    ;
+    def aws_config_field_config:
+        {"profiles": aws_config_field_profiles, "plugins": aws_config_field_plugins}
+    ;
+    def aws_config_field_credentials:
+        .credentials
+    ;
+    def aws_config_output:
+        {"config": aws_config_field_config, "credentials": aws_config_field_credentials}
+    ;
+    def aws_config:
+        aws_config_input | aws_config_output
+    ;
+    def role_profiles:
+        .config.profiles | to_entries | .[] | select(.value.role_arn)
+    ;
+    def account_from_role_arn:
+        sub("([^:]*:){4}";"") | sub(":.*";"")
+    ;
+    def role_name_from_role_arn:
+        sub("([^:]*:){5}[^/]*/";"") | sub("/.*";"")
+    ;
+    def profile_flat:
+        [
+            .config.profiles | to_entries | .[] | select(.value.role_arn) |
+            {
+                "profile":.key,
+                "account":(.value.role_arn | account_from_role_arn),
+                "role":(.value.role_arn | role_name_from_role_arn)
+            }
+        ]
+    ;
+    def profile_nested:
+        [
+            .config.profiles | to_entries | .[] | select(.value.role_arn) |
+            {
+                (.key):{
+                    "account":(.value.role_arn | account_from_role_arn),
+                    "role":(.value.role_arn | role_name_from_role_arn)
+                }
+            }
+        ]
+    ;
+    def export_assumed_role:
+        [ (add | add) | account_id, . ] |
+        add | to_entries[] | snake_case + equals_value | export
+    ;
+    def export_session_token:
+        add |
+        add | to_entries[] | snake_case + equals_value | export
+    ;
+'
+
+export_assumed_role(){
+      jq -s -r "
+          ${jq_functions}
+          . #export_assumed_role
+      "
+}
+
+export_session_token(){
+      jq -s -r "
+          ${jq_functions}
+          export_session_token
+      "
+}
+
+get_session_token(){
+    otp="$(keyfob otp aws)"
+    account="$(get_identity_account)"
+    user="$(get_identity_basename)"
+    fmt="arn:aws:iam::%s:mfa/%s"
+    # shellcheck disable=SC2059
+    aws sts get-session-token \
+        --serial-number "$(printf "$fmt" "$account" "$user")" \
+        --token-code "$otp"
+}
+
+get_identity(){
+    filter=("$@")
+    [[ -z "${caller_identity:-}" ]] \
+      && caller_identity="$(aws sts get-caller-identity)"
+    # shellcheck disable=SC2128,SC2015
+    [[ -z "$filter" ]] \
+      && local cmd=("cat") \
+      || local cmd=("jq" "${filter[@]}")
+    "${cmd[@]}" <<<"${caller_identity}"
+}
+
+get_identity_basename(){
+    #basename "$(aws sts get-caller-identity --query Arn --output text)"
+    basename "$(get_identity -r .Arn)"
+}
+
+get_identity_account(){
+    basename "$(get_identity -r .Account)"
+}
+
+_is_function(){
+    callable="$1"
+    type "$callable" 2>/dev/null | grep -q 'is a .*function'
+}
+
+_rand_hex(){
+    head -c64 /dev/urandom | shasum -ba 256 | sed 's/ .*//'
+}
+
+_eval_wrapper(){
+    callable="$1"
+    if _is_function "$callable"; then
+        :
+    else
+        local cmd
+        cmd="$(which "$callable")"
+        #_relay_token='[[ -n "$EVAL_TOKEN" ]] && echo $EVAL_TOKEN;'
+        _relay_token='[[ "_$EVAL_TOKEN" == "_" ]] || echo $EVAL_TOKEN;'
+        _relay_cmd='$(printf "%q " "'$cmd'" "$@");'
+        out='
+        '$callable'(){(set -x
+            local EVAL_TOKEN
+            EVAL_TOKEN="$(head -c64 /dev/urandom | shasum -ba 256 | sed "s/.*//")"
+            set | less
+            EVAL_TOKEN="$EVAL_TOKEN" bash -c "set|less; '$_relay_token' '$_relay_cmd'"
+        )}'
+        eval "$out"
+        declare -f "$callable"
+    fi
+}
+
+_fix_csv(){
+    # Addresses error:
+    # Expected header "User Name" not found
+    sed '1s/^/User Name,/;2s/^/default,/'
+}
+
+import_access_key_csv(){
+    csv_file="$1"
+    aws configure import --csv "$(_fix_csv <"$csv_file")"
+}
+
+_func(){
+    declare -F | awk '$2=="-f" && $3~/^[^_]/{print $3}'
+}
+
+_path_to_this_script(){
+    local dir; dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+    if [[ ${1:-} == "cd" ]]; then
+        cd "$dir"
+    else
+        echo "$dir/$(basename "${BASH_SOURCE[0]}")"
+    fi
+}
+
+_main(){
+    (
+        _path_to_this_script cd
+        if [[ -z "${1:-}" ]]; then
+            _func
+        else
+            cmd="$1"
+            #[[ $cmd == kill ]] && cmd="kill_dnsmasq"
+            shift
+            $cmd "$@"
+        fi
+    )
+}
+
+_entrypoint(){
+    set -eu
+    [[ ${DEBUG_XTRACE:-} == 1 ]] && set -x
+    if [[ $0 == "${BASH_SOURCE[0]}" ]]; then _main "$@"; fi
+}
+
+_entrypoint "$@"
+

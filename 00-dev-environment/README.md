@@ -109,6 +109,11 @@ authorized to in the labs account. These tokens will last approximately
   AWS MFA credentials from Option 1.
 1. Try to reduce the amount of manual input as much as possible.
 
+> - I created [this tool](../awstool) to address the need. See [these
+> notes](NOTES-Setup_AWS_Credentials.md#commands)
+> - I created [this tool](../git-mkb) to aid in completing this course. See
+> [these notes](NOTES-Setup_git_helpers.md#commands)
+
 ###### Question 0.1.1: 1
 
 What method did you use to store the aws credentials?  What are some other

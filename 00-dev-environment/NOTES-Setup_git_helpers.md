@@ -3,6 +3,10 @@
 
 - Setup git helpers
 
+### Assets
+
+- [git-mkb](../git-mkb)
+
 ### Commands
 
 ```
