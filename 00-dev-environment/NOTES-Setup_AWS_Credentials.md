@@ -1,13 +1,12 @@
-
-## Lab 0.1.1: AWS Access Keys
+# Lab 0.1.1: AWS Access Keys
 
 - Setup AWS Credentials
 
-### Assets
+## Assets
 
 - [awstool](../awstool)
 
-### Commands
+## Commands
 
 ```
 src=~/.aws/bruno.bronosky.labs_accessKeys.csv
@@ -17,7 +16,7 @@ rm "$dest"
 aws sts get-caller-identity
 ```
 
-### Transcript
+## Transcript
 
 ```
 $ src=~/.aws/bruno.bronosky.labs_accessKeys.csv

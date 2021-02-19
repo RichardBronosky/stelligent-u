@@ -1,20 +1,19 @@
-
-## Lab 0.1.1: AWS Access Keys
+# Lab 0.1.1: AWS Access Keys
 
 - Setup git helpers
 
-### Assets
+## Assets
 
 - [git-mkb](../git-mkb)
 
-### Commands
+## Commands
 
 ```
 ../git-mkb
 git mkb
 ```
 
-### Transcript
+## Transcript
 
 ```
 00-dev-environment $ ../git-mkb
