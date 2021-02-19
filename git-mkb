@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -eu
+
+if [[ -z "$(git config --get alias.mkb)" ]]; then
+    echo -e "\n""Adding alias to local .git/config"
+    git config --local alias.mkb '!./git-mkb'
+    echo "You can now MaKe Branches for all the labs in a topic/chapter like so:"
+    echo "$ cd 01-cloudformation"
+    echo -e "$ git mkb""\n" 
+    exit
+fi
+
+verbose(){
+    printf "%q " "$@";
+    echo;
+    "$@";
+}
+
+cd "./${GIT_PREFIX:-}" ||:
+startpoint="master"
+while read -r branchname; do
+    verbose git branch "$branchname" "$startpoint" ||:
+done < <(
+    awk '
+    /## Lab /{
+        gsub(":","",$3);
+        name="Lab_"$3;
+        $1=$2=$3="";
+        gsub("^ *","");
+        gsub("[^-a-zA-Z0-9.]","_");
+        printf("%s-%s\n",name,$0);
+    }' README.md
+)
