@@ -1,5 +1,6 @@
 # Topic 0: Development Environment
 
+<!-- Inline answers expected where ✏️ is found -->
 <!-- TOC -->
 
 - [Topic 0: Development Environment](#topic-0-development-environment)
@@ -67,7 +68,7 @@ _Never_ commit credentials to a git repo.
 
 ##### Option 1: Getting Credentials via STS command
 
-```shell
+```sh
 aws sts get-session-token \
     --serial-number arn:aws:iam::324320755747:mfa/USERNAME \
     --token-code 123456` \
@@ -76,7 +77,7 @@ aws sts get-session-token \
 
 This will return json containing the temporarily credentials.
 
-```shell
+```sh
 "Credentials": {
     "SecretAccessKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
     "SessionToken": "AQoDYXdzEJr...<remainder of security token>",
@@ -89,7 +90,7 @@ This will return json containing the temporarily credentials.
 Using these temporary credentials you will need to edit your `.aws/credentials`
 file and change the security configuration for the profile to be used.
 
-```shell
+```sh
 [temp]
 output = json
 region = us-east-1
@@ -109,20 +110,53 @@ authorized to in the labs account. These tokens will last approximately
   AWS MFA credentials from Option 1.
 1. Try to reduce the amount of manual input as much as possible.
 
-> - I created [this tool](../awstool) to address the need. See [these
-> notes](NOTES-Setup_AWS_Credentials.md#commands)
 > - I created [this tool](../git-mkb) to aid in completing this course. See
 > [these notes](NOTES-Setup_git_helpers.md#commands)
+> - I added `import_access_key_csv` [this tool](../awstool) to address the
+> loading credentials from CSV. See [these
+> notes](NOTES-Setup_AWS_Credentials.md#commands)
+> - I added `export_session_token` [this tool](../awstool) to address the use
+> of session tokens. See [these notes](NOTES-MFA_Script.md#commands)
 
 ###### Question 0.1.1: 1
 
-What method did you use to store the aws credentials?  What are some other
-options?
+What method did you use to store the aws credentials?
+
+> To store `session_token` or `assumed_role` credentials, I prefer to use the
+> `AWS_`... [exported] ENV vars. I think those kinds of secrets should be kept
+> in memory rather than written to disk. 
+
+What are some other options?
 
 ###### Question 0.1.1: 2
 
 Which AWS environment variable cannot be set in order to run the
 `aws sts get-session-token` command?
+
+> It would seem the answer is `AWS_ACCESS_KEY_ID`, based on...
+> ```sh
+> $ ./awstool _test_get_session_token_with_env_vars
+> Got fresh credentials using MFA OTP.
+> Waiting 16 seconds for new OTP.
+> 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+> Removing: AWS_ACCESS_KEY_ID, Leaving: AWS_EXPIRATION AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+> {
+>   "AccessKeyId": "...QWVFP533"
+> }
+> ---- 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 ----
+> Removing: AWS_EXPIRATION, Leaving: AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+> 
+> An error occurred (AccessDenied) when calling the GetSessionToken operation: Cannot call GetSessionToken with session credentials
+> ---- 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 ----
+> Removing: AWS_SECRET_ACCESS_KEY, Leaving: AWS_ACCESS_KEY_ID AWS_EXPIRATION AWS_SESSION_TOKEN
+> 
+> Partial credentials found in env, missing: AWS_SECRET_ACCESS_KEY
+> ---- 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 ----
+> Removing: AWS_SESSION_TOKEN, Leaving: AWS_ACCESS_KEY_ID AWS_EXPIRATION AWS_SECRET_ACCESS_KEY
+> 
+> An error occurred (InvalidClientTokenId) when calling the GetSessionToken operation: The security token included in the request is invalid.
+> ----  ----
+> ```
 
 ##### Option 2: Using AWS Vault to automatically handle your temporary tokens
 
@@ -139,7 +173,7 @@ and start over.
 To use aws-vault for temporary credential management is simple. You need to add
 the arn of your mfa token to your profiles config in `~/.aws/config` like so:
 
-```shell
+```sh
 [profile MY_PROFILE]
 output = json
 region = us-east-1
@@ -154,12 +188,13 @@ You want to set an alias in your .bashrc or .zshrc to something like this:
 
 #### Lab 0.1.2: GitHub
 
-1. Create a new repository from the [Stelligent-U repository template](https://github.com/stelligent/stelligent-u/generate)
+1. Create a new repository from the [Stelligent-U repository
+template](https://github.com/stelligent/stelligent-u/generate)
 1. Select the owner of the repository
 1. Name the new private repository
-1. Generate ssh keys and
-  test access. Use [this GitHub guide](https://help.github.com/articles/connecting-to-github-with-ssh/)
-  to get access and clone the private repo to your laptop.
+1. Generate ssh keys and test access. Use [this GitHub
+guide](https://help.github.com/articles/connecting-to-github-with-ssh/) to get
+access and clone the private repo to your laptop.
 
 #### Lab 0.1.3: Cloud9 Environment
 
@@ -169,7 +204,8 @@ the Cloud9 environment to work on the remainder of the Stelligent-U
 labs, but it is not required.
 
 Create a new Cloud 9 environment in the region of your preference
-(ie: `us-east-1`) in the AWS account using the [AWS user guide](https://docs.aws.amazon.com/cloud9/latest/user-guide/welcome.html).
+(ie: `us-east-1`) in the AWS account using the [AWS user
+guide](https://docs.aws.amazon.com/cloud9/latest/user-guide/welcome.html).
 Be sure to note the different options when setting up the environment,
 but use the default options for this lab. In Cloud9, run the same AWS
 CLI commands as you did in [lab 0.1.1](#lab-011-aws-access-keys):
@@ -194,7 +230,7 @@ to configure the Cloud9 instance to work with GitHub.
 
 #### Question: Environments
 
-_Running the two commands in [lab 0.1.1](#lab-011-aws-access-keys) and
+Running the two commands in [lab 0.1.1](#lab-011-aws-access-keys) and
 [lab 0.1.3](#lab-013-cloud9-environment) should have shown the same
 results. What does this tell you about the access the keys give you on
 your laptop and the access you have in the Cloud9 environment? What

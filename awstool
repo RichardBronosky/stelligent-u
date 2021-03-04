@@ -5,6 +5,7 @@ set -o pipefail   #    return status of last command to exit with a non-zero
 set -o errtrace   # -E ERR trap is inherited by shell functions
 set -o functrace  # -T DEBUG trap is inherited by shell functions
 
+
 jq_functions='
 
     def export:
@@ -91,7 +92,12 @@ export_assumed_role(){
 }
 
 export_session_token(){
-      jq -s -r "
+      if _stdin_is_pipe_like; then
+          local cmd=("cat")
+      else
+          local cmd=("get_session_token")
+      fi
+      "${cmd[@]}" | jq -s -r "
           ${jq_functions}
           export_session_token
       "
@@ -113,9 +119,11 @@ get_identity(){
     [[ -z "${caller_identity:-}" ]] \
       && caller_identity="$(aws sts get-caller-identity)"
     # shellcheck disable=SC2128,SC2015
-    [[ -z "$filter" ]] \
-      && local cmd=("cat") \
-      || local cmd=("jq" "${filter[@]}")
+    if [[ -z "$filter" ]]; then
+        local cmd=("cat")
+    else
+        local cmd=("jq" "${filter[@]}")
+    fi
     "${cmd[@]}" <<<"${caller_identity}"
 }
 
@@ -128,6 +136,92 @@ get_identity_account(){
     basename "$(get_identity -r .Account)"
 }
 
+_get_otp_timeout(){
+    # shellcheck disable=SC2005,SC2084
+    echo "$((30 - ($(date +%s) % 30)))"
+}
+
+_snooze(){
+    local timeout="$1"
+    for x in $(seq "$timeout" 0); do
+        echo -n "$x"
+        sleep 1
+        if [[ $x -gt 0 ]]; then echo -n " "; fi
+    done
+}
+
+_get_sorted_aws_vars(){
+    # shellcheck disable=SC2005,SC2046
+    echo $(env | awk -F "=" '/^AWS_/{print $1}' | sort)
+}
+
+# EXTRANEOUS: for 00-dev-environment/README.md#question-011-2
+_test_get_session_token_with_env_vars(){
+
+    _source_cached_credential_env_vars(){
+        cache_file=/tmp/.cached_aws_credentials.sh
+        if ! [[ -f "$cache_file" ]]; then
+            export_session_token > "$cache_file"
+            echo "Got fresh credentials using MFA OTP."
+            # shellcheck disable=SC2084
+            timeout="$(_get_otp_timeout)"
+            echo "Waiting $timeout seconds for new OTP."
+            _snooze "$timeout"
+            echo
+        fi
+        # shellcheck disable=SC1090
+        source "$cache_file"
+    }
+
+    # Consistant env
+    vars_to_unset="$(_get_sorted_aws_vars)"
+    # shellcheck disable=SC2086
+    [[ -n ${vars_to_unset} ]] && unset ${vars_to_unset}
+    _source_cached_credential_env_vars
+
+    # Test cycle
+    # shellcheck disable=SC2207
+    vars=($(_get_sorted_aws_vars))
+    for var in "${vars[@]}"; do
+        _source_cached_credential_env_vars
+        unset "$var";
+        echo "Removing: $var, Leaving: $(_get_sorted_aws_vars)"
+        get_session_token | jq \
+          '{AccessKeyId: ("..."+(.Credentials.AccessKeyId | .[-8:]))}' ||:
+        echo -n "---- ";
+        if [[ $var != "${vars[${#vars[@]}-1]}" ]]; then
+            _snooze "$(_get_otp_timeout)"
+        fi
+        echo " ----";
+    done;
+}
+
+_unset_aws(){
+    cat <<EOF
+unset _ $(env | awk -F "=" '/^AWS_/{print $1}')
+EOF
+}
+
+_stdin_is_a_pipe(){
+    [[ -p /dev/stdin ]]
+}
+
+_stdin_is_a_tty(){
+    [[ -t 0 ]]
+}
+
+_stdin_is_pipe_like(){
+    _stdin_is_a_pipe || ! _stdin_is_a_tty
+}
+
+_stdout_is_pipe_like(){
+    ! _stdout_is_a_tty # meaning # it must be a pipe or redirection
+}
+
+_stdout_is_a_tty(){
+    [[ -t 1 ]]
+}
+
 _is_function(){
     callable="$1"
     type "$callable" 2>/dev/null | grep -q 'is a .*function'
@@ -135,28 +229,6 @@ _is_function(){
 
 _rand_hex(){
     head -c64 /dev/urandom | shasum -ba 256 | sed 's/ .*//'
-}
-
-_eval_wrapper(){
-    callable="$1"
-    if _is_function "$callable"; then
-        :
-    else
-        local cmd
-        cmd="$(which "$callable")"
-        #_relay_token='[[ -n "$EVAL_TOKEN" ]] && echo $EVAL_TOKEN;'
-        _relay_token='[[ "_$EVAL_TOKEN" == "_" ]] || echo $EVAL_TOKEN;'
-        _relay_cmd='$(printf "%q " "'$cmd'" "$@");'
-        out='
-        '$callable'(){(set -x
-            local EVAL_TOKEN
-            EVAL_TOKEN="$(head -c64 /dev/urandom | shasum -ba 256 | sed "s/.*//")"
-            set | less
-            EVAL_TOKEN="$EVAL_TOKEN" bash -c "set|less; '$_relay_token' '$_relay_cmd'"
-        )}'
-        eval "$out"
-        declare -f "$callable"
-    fi
 }
 
 _fix_csv(){
@@ -189,19 +261,19 @@ _main(){
         if [[ -z "${1:-}" ]]; then
             _func
         else
-            cmd="$1"
+            local cmd=("$1")
             #[[ $cmd == kill ]] && cmd="kill_dnsmasq"
             shift
-            $cmd "$@"
+            "${cmd[@]}" "$@"
         fi
     )
 }
 
 _entrypoint(){
-    set -eu
     [[ ${DEBUG_XTRACE:-} == 1 ]] && set -x
     if [[ $0 == "${BASH_SOURCE[0]}" ]]; then _main "$@"; fi
 }
 
 _entrypoint "$@"
 
+exit
