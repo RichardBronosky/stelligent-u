@@ -232,10 +232,20 @@ to configure the Cloud9 instance to work with GitHub.
 
 Running the two commands in [lab 0.1.1](#lab-011-aws-access-keys) and
 [lab 0.1.3](#lab-013-cloud9-environment) should have shown the same
-results. What does this tell you about the access the keys give you on
-your laptop and the access you have in the Cloud9 environment? What
-other methods are there to provide this level of access without using
-keys?_
+results.
+
+What does this tell you about the access the keys give you on your laptop and
+the access you have in the Cloud9 environment?
+
+> The access is effectively the same. It seems that
+> /home/ec2-user/.aws/credentials is getting updated every ~8 minutes.
+
+What other methods are there to provide this level of access without using keys?
+
+> The EC2 instance could have been started with a ROLE that had the same
+> permissions as the user launching it. But then you'd have to have a process
+> that kept the ROLE in sync with permissions changes on the USER and any GROUPS
+> they are in
 
 #### Task
 
