@@ -124,7 +124,7 @@ What method did you use to store the aws credentials?
 
 > To store `session_token` or `assumed_role` credentials, I prefer to use the
 > `AWS_`... [exported] ENV vars. I think those kinds of secrets should be kept
-> in memory rather than written to disk. 
+> in memory rather than written to disk.
 
 What are some other options?
 
@@ -134,27 +134,27 @@ Which AWS environment variable cannot be set in order to run the
 `aws sts get-session-token` command?
 
 > It would seem the answer is `AWS_ACCESS_KEY_ID`, based on...
-> ```sh
+> ```txt
 > $ ./awstool _test_get_session_token_with_env_vars
 > Got fresh credentials using MFA OTP.
 > Waiting 16 seconds for new OTP.
 > 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
 > Removing: AWS_ACCESS_KEY_ID, Leaving: AWS_EXPIRATION AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-> {
->   "AccessKeyId": "...QWVFP533"
-> }
+> { "AccessKeyId": "...QWVFP533" }
 > ---- 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 ----
 > Removing: AWS_EXPIRATION, Leaving: AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-> 
-> An error occurred (AccessDenied) when calling the GetSessionToken operation: Cannot call GetSessionToken with session credentials
-> ---- 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 ----
+>
+> An error occurred (AccessDenied) when calling the GetSessionToken operation:
+> Cannot call GetSessionToken with session credentials
+> ---- 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 ----
 > Removing: AWS_SECRET_ACCESS_KEY, Leaving: AWS_ACCESS_KEY_ID AWS_EXPIRATION AWS_SESSION_TOKEN
-> 
+>
 > Partial credentials found in env, missing: AWS_SECRET_ACCESS_KEY
-> ---- 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 ----
+> ---- 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 ----
 > Removing: AWS_SESSION_TOKEN, Leaving: AWS_ACCESS_KEY_ID AWS_EXPIRATION AWS_SECRET_ACCESS_KEY
-> 
-> An error occurred (InvalidClientTokenId) when calling the GetSessionToken operation: The security token included in the request is invalid.
+>
+> An error occurred (InvalidClientTokenId) when calling the GetSessionToken operation:
+> The security token included in the request is invalid.
 > ----  ----
 > ```
 
@@ -189,12 +189,12 @@ You want to set an alias in your .bashrc or .zshrc to something like this:
 #### Lab 0.1.2: GitHub
 
 1. Create a new repository from the [Stelligent-U repository
-template](https://github.com/stelligent/stelligent-u/generate)
+   template](https://github.com/stelligent/stelligent-u/generate)
 1. Select the owner of the repository
 1. Name the new private repository
 1. Generate ssh keys and test access. Use [this GitHub
-guide](https://help.github.com/articles/connecting-to-github-with-ssh/) to get
-access and clone the private repo to your laptop.
+   guide](https://help.github.com/articles/connecting-to-github-with-ssh/) to
+   get access and clone the private repo to your laptop.
 
 #### Lab 0.1.3: Cloud9 Environment
 
@@ -232,10 +232,20 @@ to configure the Cloud9 instance to work with GitHub.
 
 Running the two commands in [lab 0.1.1](#lab-011-aws-access-keys) and
 [lab 0.1.3](#lab-013-cloud9-environment) should have shown the same
-results. What does this tell you about the access the keys give you on
-your laptop and the access you have in the Cloud9 environment? What
-other methods are there to provide this level of access without using
-keys?_
+results.
+
+What does this tell you about the access the keys give you on your laptop and
+the access you have in the Cloud9 environment?
+
+> The access is effectively the same. It seems that
+> /home/ec2-user/.aws/credentials is getting updated every ~8 minutes.
+
+What other methods are there to provide this level of access without using keys?
+
+> The EC2 instance could have been started with a ROLE that had the same
+> permissions as the user launching it. But then you'd have to have a process
+> that kept the ROLE in sync with permissions changes on the USER and any GROUPS
+> they are in
 
 #### Task
 
