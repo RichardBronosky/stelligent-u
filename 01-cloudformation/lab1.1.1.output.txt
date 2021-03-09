@@ -1,0 +1,3 @@
+{
+  "StackId": "arn:aws:cloudformation:us-east-1:324320755747:stack/StelligentULab1n1n1uBrunoBronosky/4587c720-8074-11eb-b9b3-0addedaaaadd"
+}
