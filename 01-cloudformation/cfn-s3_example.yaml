@@ -4,7 +4,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 
 Description: >
     Created by Bruno Bronosky
-    for Stelligent-U Lab 1.1.1
+    for Stelligent-U 01-cloudformation
 
 Parameters:
 
