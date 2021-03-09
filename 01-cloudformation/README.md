@@ -97,6 +97,10 @@ create an AWS Simple Storage Service (S3) Bucket.
 - Commit the template to your Github repository under the 01-cloudformation
   folder.
 
+> - I created [this template](./cfn-s3_example.yaml)
+> - I created [this script](lab1.1.1.sh)
+> - The script produced [this output](lab1.1.1.output.txt)
+
 #### Lab 1.1.2: Stack Parameters
 
 Update the same template by adding a CloudFormation
