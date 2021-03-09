@@ -1,0 +1,38 @@
+---
+# vim: set et ts=2 sts=2 sw=2 :
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+    Created by Bruno Bronosky
+    for Stelligent-U Lab 1.1.1
+
+Parameters:
+
+  BucketNameParameter:
+    Type: String
+    Default: stelligent-u-lab-1.1.1
+    Description: Enter a name for the bucket. Default is 'stelligent-u-lab-1.1.1'.
+
+Resources:
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      #BucketName: !Ref BucketName
+      BucketName:
+        Ref: BucketNameParameter
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        -
+          Key: Description
+          Value: Delete me
+
+Outputs:
+  BucketName:
+    Value: !Ref BucketNameParameter
+#    Export:
+#      Name: NameOfBucket
