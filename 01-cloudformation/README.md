@@ -113,6 +113,10 @@ to the stack and use the parameter's value as the name of the S3 bucket.
 
 - Add the template changes and new parameter file to your Github repo.
 
+> - I created [this parameters file](./parameters.json)
+> - I created [this script](lab1.1.2.sh)
+> - The script produced [this output](lab1.1.2.output.2021-03-09_00.09.09.txt)
+
 #### Lab 1.1.3: Pseudo-Parameters
 
 Update the same template by prefixing the name of the bucket with the
